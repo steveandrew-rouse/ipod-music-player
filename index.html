@@ -4,106 +4,173 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <meta name="theme-color" content="#000000" />
-  <title>Sonora — iPod-inspired music player</title>
+  <meta name="description" content="Sonora — an iPod-inspired player with online songs, global radio, public artwork and black or white themes." />
+  <title>Sonora — iPod music player</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Space+Grotesk:wght@500;600;700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="styles.css" />
 </head>
-<body class="ipod-theme">
-  <div class="bg-blur"></div>
-  
-  <main class="app-shell">
-    <nav class="topbar">
-      <a class="brand" href="#"><span class="brand-mark">♫</span> SONORA</a>
+<body data-theme="dark">
+  <div class="aurora" id="bgArt" aria-hidden="true"></div>
+  <div class="grain" aria-hidden="true"></div>
+
+  <main class="app">
+    <header class="topbar">
+      <a class="brand" href="#" aria-label="Sonora home">
+        <span class="brand-mark" aria-hidden="true">▶</span>
+        <span class="brand-name">SONORA</span>
+        <span class="brand-tag">MUSIC</span>
+      </a>
+
+      <form class="search" id="searchForm" role="search">
+        <span class="search-icon" aria-hidden="true">⌕</span>
+        <input id="searchInput" type="search" autocomplete="off" spellcheck="false"
+               placeholder="Search online songs, or paste a song link"
+               aria-label="Search online songs or radio, or paste a link" />
+        <button type="submit" class="search-btn" id="searchBtn">Search</button>
+      </form>
+
       <div class="top-actions">
-        <button class="icon-btn" id="themeBtn" aria-label="Toggle theme">🌐</button>
-        <button class="profile" aria-label="Profile">RS</button>
+        <span class="status" id="status" data-tone="idle">READY</span>
+        <button class="icon-btn" id="themeBtn" type="button" aria-label="Switch to white theme" aria-pressed="false" title="Black / white theme">☀</button>
       </div>
+    </header>
+
+    <div class="banner" id="serverBanner" hidden>
+      <span><b>Local server offline.</b> Run <code>python server.py</code> in this folder to stream and search online songs.</span>
+      <button type="button" id="retryServer">Retry</button>
+    </div>
+
+    <nav class="modebar" aria-label="Player modes">
+      <div class="mode-switch" role="tablist" aria-label="Choose source">
+        <button type="button" class="mode-btn is-active" id="songsModeBtn" role="tab" aria-selected="true" aria-controls="songsView">
+          <span aria-hidden="true">♪</span> Online Songs
+        </button>
+        <button type="button" class="mode-btn" id="radioModeBtn" role="tab" aria-selected="false" aria-controls="radioView">
+          <span aria-hidden="true">◉</span> Global Radio
+        </button>
+      </div>
+      <p class="mode-hint" id="modeHint">Streaming audio · artwork from the online catalogue</p>
     </nav>
 
-    <section class="ipod-player">
-      <div class="ipod-screen">
-        <div class="screen-inner">
-          <div class="album-display">
-            <img id="cover" src="https://images.unsplash.com/photo-1516280440614-37939bbacd81?auto=format&fit=crop&w=700&q=85" alt="Album artwork">
-            <span class="playing-eq" id="eq"><i></i><i></i><i></i></span>
+    <section class="hero">
+      <div class="device">
+        <div class="screen">
+          <div class="artwork">
+            <img id="cover" alt="Track artwork"
+                 src="data:image/svg+xml;charset=utf-8,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%20400%20400%22%3E%3Cdefs%3E%3ClinearGradient%20id%3D%22g%22%20x1%3D%220%22%20y1%3D%220%22%20x2%3D%221%22%20y2%3D%221%22%3E%3Cstop%20offset%3D%220%22%20stop-color%3D%22%232a2a2e%22%2F%3E%3Cstop%20offset%3D%221%22%20stop-color%3D%22%230a0a0c%22%2F%3E%3C%2FlinearGradient%3E%3C%2Fdefs%3E%3Crect%20width%3D%22400%22%20height%3D%22400%22%20fill%3D%22url(%23g)%22%2F%3E%3Ccircle%20cx%3D%22200%22%20cy%3D%22200%22%20r%3D%2264%22%20fill%3D%22rgba(255%2C255%2C255%2C.1)%22%2F%3E%3Cpath%20d%3D%22M185%20172v56l48-28z%22%20fill%3D%22rgba(255%2C255%2C255%2C.62)%22%2F%3E%3C%2Fsvg%3E" />
+            <div class="artwork-shade" aria-hidden="true"></div>
+            <span class="source-badge" id="sourceBadge">ONLINE SONGS</span>
+            <span class="eq" id="eq" aria-hidden="true"><i></i><i></i><i></i><i></i></span>
           </div>
-          
-          <div class="track-details">
-            <p class="eyebrow">NOW PLAYING</p>
-            <h2 id="title">Midnight City</h2>
-            <p id="artist">M83</p>
-            
-            <div class="progress-container">
-              <div class="progress">
+
+          <div class="meta">
+            <p class="eyebrow" id="eyebrow">NOW PLAYING</p>
+            <h1 id="title">Pick a track</h1>
+            <p id="artist">Search above, paste a song link, or press play on a song below.</p>
+
+            <div class="progress-wrap">
+              <div class="progress" id="progress" role="slider" tabindex="0"
+                   aria-label="Seek" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0" aria-valuetext="0:00 of 0:00">
                 <div class="progress-fill" id="progressFill"></div>
+                <div class="progress-knob" id="progressKnob"></div>
               </div>
               <div class="time-row">
                 <span id="currentTime">0:00</span>
                 <span id="duration">0:00</span>
               </div>
             </div>
+
+            <div class="volume-row">
+              <span class="vol-label" aria-hidden="true">VOL</span>
+              <input id="volume" type="range" min="0" max="100" step="1" value="80" aria-label="Volume" />
+              <span class="vol-value" id="volumeValue">80</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="click-wheel" aria-label="Player controls">
+          <button class="wheel-btn wheel-up" id="prevBtn" type="button" aria-label="Previous track" title="Previous (←)">
+            <span aria-hidden="true">⏮</span><small>PREV</small>
+          </button>
+          <button class="wheel-btn wheel-right" id="nextBtn" type="button" aria-label="Next track" title="Next (→)">
+            <span aria-hidden="true">⏭</span><small>NEXT</small>
+          </button>
+          <button class="wheel-btn wheel-down" id="shuffleBtn" type="button" aria-label="Shuffle" aria-pressed="false" title="Shuffle (S)">
+            <span aria-hidden="true">⤨</span><small>SHUFFLE</small>
+          </button>
+          <button class="wheel-btn wheel-left" id="repeatBtn" type="button" aria-label="Repeat: off" aria-pressed="false" title="Repeat (R)">
+            <span aria-hidden="true">↻</span><small>REPEAT</small>
+          </button>
+
+          <div class="wheel-center">
+            <button id="playBtn" class="wheel-play" type="button" aria-label="Play" title="Play / Pause (Space)">
+              <span id="playIcon" aria-hidden="true">▶</span>
+            </button>
           </div>
         </div>
       </div>
 
-      <div class="click-wheel">
-        <div class="wheel-center">
-          <button id="playBtn" class="wheel-play" aria-label="Play/Pause">▶</button>
+      <aside class="queue-panel">
+        <div class="panel-head">
+          <h2 id="queueTitle">Up next</h2>
+          <span class="count" id="queueCount">0</span>
         </div>
-        <button class="wheel-btn wheel-up" id="prevBtn" aria-label="Previous">↑</button>
-        <button class="wheel-btn wheel-right" id="nextBtn" aria-label="Next">→</button>
-        <button class="wheel-btn wheel-down" id="shuffleBtn" aria-label="Shuffle">↓</button>
-        <button class="wheel-btn wheel-left" id="repeatBtn" aria-label="Repeat">←</button>
-      </div>
-
-      <audio id="audio" preload="metadata" crossorigin="anonymous"></audio>
-    </section>
-
-    <section class="content-grid">
-      <div class="library">
-        <div class="section-heading">
-          <div>
-            <p class="eyebrow">DISCOVER</p>
-            <h2>Global Radio Stations</h2>
-          </div>
-          <button class="text-btn" id="seeAll">Refresh <span>→</span></button>
-        </div>
-        <div class="chips">
-          <button class="chip active" data-filter="all">All</button>
-          <button class="chip" data-filter="Pop">Pop</button>
-          <button class="chip" data-filter="Rock">Rock</button>
-          <button class="chip" data-filter="Jazz">Jazz</button>
-          <button class="chip" data-filter="Electronic">Electronic</button>
-        </div>
-        <div class="track-list" id="trackList">
-          <div class="loading">Loading global stations...</div>
-        </div>
-      </div>
-
-      <aside class="queue">
-        <div class="section-heading">
-          <div>
-            <p class="eyebrow">UP NEXT</p>
-            <h2>Your queue</h2>
-          </div>
-          <button class="more-btn" aria-label="Queue options">⋯</button>
-        </div>
-        <div class="queue-art">
-          <img id="queueImg" src="https://images.unsplash.com/photo-1493225457124-a3eb161ffa5f?auto=format&fit=crop&w=900&q=85" alt="Concert lights">
-          <div>
-            <strong id="queueTitle">Loading...</strong>
-            <span id="queueDesc">connecting to global stations</span>
-          </div>
-          <button class="queue-play" id="queuePlay">▶</button>
-        </div>
-        <p class="tip"><span>💫</span> Pro tip<br><b>Press space</b> to play • <b>Arrow keys</b> to skip</p>
+        <ol class="queue-list" id="queueList">
+          <li class="empty">Nothing queued yet.</li>
+        </ol>
+        <span class="source-note" id="sourceNote">Streaming audio</span>
       </aside>
     </section>
 
-    <footer><span>SONORA / 2026</span><span>Global music • iPod inspired • Always playing.</span></footer>
+    <section class="library view" id="songsView" aria-labelledby="libraryTitle">
+      <div class="panel-head">
+        <div>
+          <p class="eyebrow" id="libraryEyebrow">LIBRARY</p>
+          <h2 id="libraryTitle">Online songs</h2>
+        </div>
+        <span class="count" id="libraryCount">18 songs</span>
+      </div>
+      <div class="grid" id="libraryGrid" role="list"></div>
+    </section>
+
+    <section class="library view" id="radioView" aria-labelledby="radioTitle" hidden>
+      <div class="panel-head">
+        <div>
+          <p class="eyebrow">DISCOVER</p>
+          <h2 id="radioTitle">Global radio stations</h2>
+        </div>
+        <div class="radio-tools">
+          <span class="count" id="radioCount">0 stations</span>
+          <button class="text-btn" id="refreshRadio" type="button">Refresh <span aria-hidden="true">↻</span></button>
+        </div>
+      </div>
+
+      <div class="chips" role="group" aria-label="Filter stations by genre">
+        <button class="chip is-active" type="button" data-filter="all" aria-pressed="true">All</button>
+        <button class="chip" type="button" data-filter="pop" aria-pressed="false">Pop</button>
+        <button class="chip" type="button" data-filter="rock" aria-pressed="false">Rock</button>
+        <button class="chip" type="button" data-filter="jazz" aria-pressed="false">Jazz</button>
+        <button class="chip" type="button" data-filter="electronic" aria-pressed="false">Electronic</button>
+      </div>
+
+      <div class="station-list" id="radioList" role="list">
+        <div class="empty">Switch to Radio to load stations.</div>
+      </div>
+    </section>
+
+    <footer>
+      <span>SONORA / 2026</span>
+      <span>iPod inspired · online songs · global radio · public artwork</span>
+    </footer>
   </main>
+
+  <div class="toast" id="toast" role="status" aria-live="polite"></div>
+  <p class="sr-only" id="liveStatus" aria-live="polite"></p>
+
+  <audio id="audioA" preload="auto"></audio>
+  <audio id="audioB" preload="auto"></audio>
 
   <script src="app.js"></script>
 </body>
