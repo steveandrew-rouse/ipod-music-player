@@ -1,0 +1,109 @@
+name: Server smoke test
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  server:
+    name: Boot API and check endpoints
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+          cache: pip
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+
+      - name: Start Sonora server
+        run: |
+          python server.py 8787 > server.log 2>&1 &
+          echo $! > server.pid
+          for attempt in $(seq 1 30); do
+            if curl -fsS http://127.0.0.1:8787/api/health > /dev/null; then
+              echo "server ready after ${attempt}s"
+              exit 0
+            fi
+            sleep 1
+          done
+          echo "server did not become ready"
+          cat server.log
+          exit 1
+
+      - name: Static page is served
+        run: |
+          curl -fsS http://127.0.0.1:8787/ -o page.html
+          grep -q "SONORA" page.html
+          grep -q "Online Songs" page.html
+          echo "page OK"
+
+      - name: Health endpoint
+        run: |
+          curl -fsS http://127.0.0.1:8787/api/health | tee health.json
+          python - <<'PY'
+          import json
+          data = json.load(open("health.json"))
+          assert data.get("ok") is True, data
+          assert data.get("search") is True, data
+          print("health OK")
+          PY
+
+      - name: Catalogue search
+        run: |
+          curl -fsS "http://127.0.0.1:8787/api/search?q=daft%20punk&limit=3" | tee search.json
+          python - <<'PY'
+          import json
+          data = json.load(open("search.json"))
+          songs = data.get("songs") or []
+          assert songs, "search returned no songs"
+          for song in songs:
+              assert song.get("id"), song
+              assert song.get("title"), song
+          print(f"search OK ({len(songs)} songs)")
+          PY
+
+      - name: Track metadata
+        run: |
+          curl -fsS "http://127.0.0.1:8787/api/song?id=4NRXx6U8ABQ" | tee song.json
+          python - <<'PY'
+          import json
+          data = json.load(open("song.json"))
+          assert data.get("id") == "4NRXx6U8ABQ", data
+          assert data.get("title"), data
+          print("metadata OK:", data["title"])
+          PY
+
+      # Datacenter IPs are frequently rate-limited by the upstream service, so a
+      # stream failure here is reported but does not fail the build.
+      - name: Stream resolution (informational)
+        continue-on-error: true
+        run: |
+          code=$(curl -s -o /dev/null -w "%{http_code}" "http://127.0.0.1:8787/api/stream/4NRXx6U8ABQ")
+          echo "stream resolution returned HTTP $code"
+          test "$code" = "302"
+
+      - name: Server log
+        if: always()
+        run: |
+          echo "--- server.log ---"
+          tail -80 server.log || true
+
+      - name: Stop server
+        if: always()
+        run: |
+          if [ -f server.pid ]; then kill "$(cat server.pid)" 2>/dev/null || true; fi
