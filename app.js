@@ -1399,7 +1399,14 @@ function restoreLast() {
 }
 
 function init() {
-  state.theme = store.get('theme', 'dark');
+  const params = new URLSearchParams(window.location.search);
+  const themeParam = params.get('theme');
+  const modeParam = params.get('mode');
+  const songParam = params.get('song');
+
+  state.theme = themeParam === 'light' || themeParam === 'dark'
+    ? themeParam
+    : store.get('theme', 'dark');
   applyTheme(state.theme, false);
 
   state.volume = clamp(Number(store.get('volume', 80)) || 0, 0, 100);
@@ -1417,8 +1424,17 @@ function init() {
   bindEvents();
   renderLibrary();
   renderQueue();
-  setMode(store.get('mode', 'songs'), { silent: true });
-  restoreLast();
+  setMode(modeParam === 'radio' ? 'radio' : modeParam === 'songs' ? 'songs' : store.get('mode', 'songs'), { silent: true });
+
+  const requested = songParam ? state.songs.find((song) => song.id === songParam) : null;
+  if (requested) {
+    state.current = requested;
+    renderNowPlaying();
+    renderLibrary();
+    renderQueue();
+  } else {
+    restoreLast();
+  }
 
   checkServer().then((online) => {
     if (online) preloadNextSong();
