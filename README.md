@@ -66,12 +66,9 @@ catalogue, resolves audio and serves a small JSON API. Opening `index.html` dire
 still shows the interface and Radio, and the page tells you when the server is missing.
 
 > **Static hosting note** — GitHub Pages can serve this page and the Radio mode, but it
-> cannot run Python, so Online Songs needs the local server.
->
-> **CI** — `.github/workflows/server-smoke.yml` boots `server.py` on every push and
-> checks the page, `/api/health`, catalogue search and track metadata. An Actions job
-> has no public inbound networking, so CI verifies the server rather than hosting it;
-> keeping Online Songs online needs a Python host (Render, Railway, Fly.io, a VPS).
+> cannot run Python, so Online Songs needs the local server. An Actions job has no public
+> inbound networking either, so keeping Online Songs online needs a Python host
+> (Render, Railway, Fly.io, a VPS).
 
 ---
 
